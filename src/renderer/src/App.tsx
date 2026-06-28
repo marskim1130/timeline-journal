@@ -1,34 +1,87 @@
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
+import { useCallback, useEffect, useState } from 'react'
+
+import type { TimeSegment } from '../../shared/timeline'
 
 function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
+  const [segments, setSegments] = useState<TimeSegment[]>([])
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const loadTodaySegments = useCallback(async (): Promise<void> => {
+    setIsLoading(true)
+    setErrorMessage(null)
+
+    try {
+      const nextSegments = await window.timelineAPI.getTodaySegments()
+      setSegments(nextSegments)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : String(error))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  const markNow = async (): Promise<void> => {
+    setIsLoading(true)
+    setErrorMessage(null)
+
+    try {
+      const nextSegments = await window.timelineAPI.markNow()
+      setSegments(nextSegments)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : String(error))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadTodaySegments()
+  }, [loadTodaySegments])
 
   return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
-      </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
+    <main className="debug-shell">
+      <header className="debug-header">
+        <div>
+          <p className="eyebrow">Timeline Journal</p>
+          <h1>IPC Debug</h1>
         </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
+        <div className="debug-actions">
+          <button disabled={isLoading} onClick={markNow} type="button">
+            Mark Now
+          </button>
+          <button disabled={isLoading} onClick={loadTodaySegments} type="button">
+            Refresh
+          </button>
         </div>
-      </div>
-      <Versions></Versions>
-    </>
+      </header>
+
+      {errorMessage ? <p className="error-message">{errorMessage}</p> : null}
+
+      <section className="segments-panel">
+        <div className="segments-summary">
+          <span>Today Segments</span>
+          <strong>{segments.length}</strong>
+        </div>
+
+        {segments.length > 0 ? (
+          <ol className="segment-list">
+            {segments.map((segment) => (
+              <li key={segment.id} className="segment-item">
+                <span>{segment.startTime}</span>
+                <span>{segment.endTime ?? 'active'}</span>
+                <span>{segment.status}</span>
+                <span>{segment.title}</span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="empty-state">{isLoading ? 'Loading...' : 'No segments yet'}</p>
+        )}
+
+        <pre className="json-preview">{JSON.stringify(segments, null, 2)}</pre>
+      </section>
+    </main>
   )
 }
 
