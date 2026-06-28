@@ -109,7 +109,7 @@ export default defineConfig({
       'react/no-unescaped-entities': 'error',
       'react/no-unknown-property': 'error',
       'react/no-unsafe': 'off',
-      'react/react-in-jsx-scope': 'error',
+      'react/react-in-jsx-scope': 'off',
       'react/require-render-return': 'error',
       'no-empty-function': [
         'error',

@@ -10,23 +10,26 @@
     "lint": "vp lint .",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
-    "typecheck": "npm run typecheck:node && npm run typecheck:web",
-    "start": "electron-vite preview",
-    "dev": "electron-vite dev",
-    "build": "npm run typecheck && electron-vite build",
+    "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web",
+    "start": "node scripts/run-electron-vite.mjs preview",
+    "dev": "node scripts/run-electron-vite.mjs dev",
+    "build": "pnpm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
-    "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win",
+    "rebuild:native": "electron-builder install-app-deps",
+    "build:unpack": "pnpm run build && electron-builder --dir",
+    "build:win": "pnpm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",
     "prepare": "vp config"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
-    "@electron-toolkit/utils": "^4.0.0"
+    "@electron-toolkit/utils": "^4.0.0",
+    "better-sqlite3": "^12.11.1"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.19.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
