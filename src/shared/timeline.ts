@@ -14,4 +14,5 @@ export interface TimeSegment {
 export interface TimelineApi {
   markNow: () => Promise<TimeSegment[]>
   getTodaySegments: () => Promise<TimeSegment[]>
+  onTimelineUpdated: (callback: () => void) => () => void
 }

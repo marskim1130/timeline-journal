@@ -5,6 +5,11 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { closeDatabase, initializeDatabase } from './db'
 import { registerTimelineIpc } from './ipc'
+import { registerTimelineShortcut, unregisterTimelineShortcut } from './shortcut'
+
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('enable-features', 'GlobalShortcutsPortal')
+}
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -51,6 +56,7 @@ void app
     // 先初始化数据库，再创建窗口；后续 IPC 可以假设数据库已经可用。
     initializeDatabase()
     registerTimelineIpc()
+    registerTimelineShortcut()
     createWindow()
 
     app.on('activate', () => {
@@ -66,6 +72,10 @@ void app
 
 app.on('before-quit', () => {
   closeDatabase()
+})
+
+app.on('will-quit', () => {
+  unregisterTimelineShortcut()
 })
 
 app.on('window-all-closed', () => {

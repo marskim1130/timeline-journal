@@ -4,12 +4,24 @@ import type { TimelineApi } from '../shared/timeline'
 
 const timelineIpcChannels = {
   markNow: 'timeline:mark-now',
-  getTodaySegments: 'timeline:get-today-segments'
+  getTodaySegments: 'timeline:get-today-segments',
+  updated: 'timeline:updated'
 } as const
 
 export const timelineAPI: TimelineApi = {
   markNow: () => ipcRenderer.invoke(timelineIpcChannels.markNow),
-  getTodaySegments: () => ipcRenderer.invoke(timelineIpcChannels.getTodaySegments)
+  getTodaySegments: () => ipcRenderer.invoke(timelineIpcChannels.getTodaySegments),
+  onTimelineUpdated: (callback) => {
+    const listener = (): void => {
+      callback()
+    }
+
+    ipcRenderer.on(timelineIpcChannels.updated, listener)
+
+    return (): void => {
+      ipcRenderer.removeListener(timelineIpcChannels.updated, listener)
+    }
+  }
 }
 
 export function exposeTimelineApi(): void {

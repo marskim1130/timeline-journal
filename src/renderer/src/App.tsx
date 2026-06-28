@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import type { TimeSegment } from '../../shared/timeline'
+import Header from './components/Header'
+import TodaySegmentList from './components/TodaySegmentList'
+
+const todayFormatter = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  weekday: 'long'
+})
 
 function App(): React.JSX.Element {
   const [segments, setSegments] = useState<TimeSegment[]>([])
@@ -39,48 +48,25 @@ function App(): React.JSX.Element {
     void loadTodaySegments()
   }, [loadTodaySegments])
 
+  useEffect(() => {
+    return window.timelineAPI.onTimelineUpdated(() => {
+      void loadTodaySegments()
+    })
+  }, [loadTodaySegments])
+
   return (
-    <main className="debug-shell">
-      <header className="debug-header">
-        <div>
-          <p className="eyebrow">Timeline Journal</p>
-          <h1>IPC Debug</h1>
-        </div>
-        <div className="debug-actions">
-          <button disabled={isLoading} onClick={markNow} type="button">
-            Mark Now
-          </button>
-          <button disabled={isLoading} onClick={loadTodaySegments} type="button">
-            Refresh
-          </button>
-        </div>
-      </header>
+    <main className="app-shell">
+      <Header
+        isLoading={isLoading}
+        onMarkNow={markNow}
+        onRefresh={loadTodaySegments}
+        segmentCount={segments.length}
+        todayLabel={todayFormatter.format(new Date())}
+      />
 
       {errorMessage ? <p className="error-message">{errorMessage}</p> : null}
 
-      <section className="segments-panel">
-        <div className="segments-summary">
-          <span>Today Segments</span>
-          <strong>{segments.length}</strong>
-        </div>
-
-        {segments.length > 0 ? (
-          <ol className="segment-list">
-            {segments.map((segment) => (
-              <li key={segment.id} className="segment-item">
-                <span>{segment.startTime}</span>
-                <span>{segment.endTime ?? 'active'}</span>
-                <span>{segment.status}</span>
-                <span>{segment.title}</span>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="empty-state">{isLoading ? 'Loading...' : 'No segments yet'}</p>
-        )}
-
-        <pre className="json-preview">{JSON.stringify(segments, null, 2)}</pre>
-      </section>
+      <TodaySegmentList isLoading={isLoading} segments={segments} />
     </main>
   )
 }
