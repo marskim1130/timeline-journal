@@ -1,15 +1,13 @@
 import { globalShortcut } from 'electron'
 
-import { notifyTimelineUpdated } from './ipc'
-import { markNow } from './timeline'
+import type { TimelineService } from './timeline-service'
 
 export const timelineShortcutAccelerator = 'Control+Alt+Space'
 
-export function registerTimelineShortcut(): void {
+export function registerTimelineShortcut(service: TimelineService): void {
   const didRegister = globalShortcut.register(timelineShortcutAccelerator, () => {
     try {
-      markNow('hotkey')
-      notifyTimelineUpdated()
+      service.markNow('hotkey')
     } catch (error) {
       console.error('Failed to mark timeline from global shortcut.', error)
     }

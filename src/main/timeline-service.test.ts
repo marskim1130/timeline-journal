@@ -201,4 +201,21 @@ describe('createTimelineService', () => {
     expect(database.markers).toHaveLength(2)
     expect(database.markers.map((marker) => marker.source)).toEqual(['renderer', 'renderer'])
   })
+
+  it('triggers onUpdated callback when markNow is called', () => {
+    let callCount = 0
+    const testService = createTimelineService({
+      database,
+      now: nextClockTime,
+      onUpdated: () => {
+        callCount += 1
+      }
+    })
+
+    testService.markNow('hotkey')
+    expect(callCount).toBe(1)
+
+    testService.markNow('renderer')
+    expect(callCount).toBe(2)
+  })
 })

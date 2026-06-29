@@ -3,9 +3,10 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
 import icon from '../../resources/icon.png?asset'
-import { closeDatabase, initializeDatabase } from './db'
-import { registerTimelineIpc } from './ipc'
+import { closeDatabase, getDatabase } from './db'
+import { notifyTimelineUpdated, registerTimelineIpc } from './ipc'
 import { registerTimelineShortcut, unregisterTimelineShortcut } from './shortcut'
+import { createTimelineService, type TimelineDatabase } from './timeline-service'
 
 if (process.platform === 'linux') {
   app.commandLine.appendSwitch('enable-features', 'GlobalShortcutsPortal')
@@ -53,10 +54,15 @@ void app
       optimizer.watchWindowShortcuts(window)
     })
 
-    // 先初始化数据库，再创建窗口；后续 IPC 可以假设数据库已经可用。
-    initializeDatabase()
-    registerTimelineIpc()
-    registerTimelineShortcut()
+    // 先初始化数据库并创建服务，再创建窗口；后续 IPC 与快捷键直接复用该服务实例。
+    const database = getDatabase() as unknown as TimelineDatabase
+    const timelineService = createTimelineService({
+      database,
+      onUpdated: notifyTimelineUpdated
+    })
+
+    registerTimelineIpc(timelineService)
+    registerTimelineShortcut(timelineService)
     createWindow()
 
     app.on('activate', () => {

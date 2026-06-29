@@ -40,6 +40,7 @@ export interface TimelineService {
 export interface TimelineServiceOptions {
   database: TimelineDatabase
   now?: () => Date
+  onUpdated?: () => void
 }
 
 const defaultSegmentTitle = '待整理'
@@ -95,7 +96,7 @@ function getSegmentsForDay(database: TimelineDatabase, date: Date): TimeSegment[
 }
 
 export function createTimelineService(options: TimelineServiceOptions): TimelineService {
-  const { database, now = () => new Date() } = options
+  const { database, now = () => new Date(), onUpdated } = options
 
   return {
     getTodaySegments: () => getSegmentsForDay(database, now()),
@@ -177,7 +178,9 @@ export function createTimelineService(options: TimelineServiceOptions): Timeline
         return getSegmentsForDay(database, currentTime)
       })
 
-      return runMarkNow()
+      const result = runMarkNow()
+      onUpdated?.()
+      return result
     }
   }
 }

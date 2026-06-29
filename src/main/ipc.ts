@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron'
 
-import { getTodaySegments, markNow } from './timeline'
+import type { TimelineService } from './timeline-service'
 
 export const timelineIpcChannels = {
   markNow: 'timeline:mark-now',
@@ -16,11 +16,11 @@ export function notifyTimelineUpdated(): void {
   }
 }
 
-export function registerTimelineIpc(): void {
+export function registerTimelineIpc(service: TimelineService): void {
   // 注册前先移除旧 handler，让开发期热重启或重复初始化更可控。
   ipcMain.removeHandler(timelineIpcChannels.markNow)
   ipcMain.removeHandler(timelineIpcChannels.getTodaySegments)
 
-  ipcMain.handle(timelineIpcChannels.markNow, () => markNow('renderer'))
-  ipcMain.handle(timelineIpcChannels.getTodaySegments, () => getTodaySegments())
+  ipcMain.handle(timelineIpcChannels.markNow, () => service.markNow('renderer'))
+  ipcMain.handle(timelineIpcChannels.getTodaySegments, () => service.getTodaySegments())
 }
