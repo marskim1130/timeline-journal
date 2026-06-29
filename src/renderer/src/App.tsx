@@ -44,6 +44,20 @@ function App(): React.JSX.Element {
     }
   }
 
+  const updateSegmentTitle = async (id: string, title: string): Promise<void> => {
+    setIsLoading(true)
+    setErrorMessage(null)
+
+    try {
+      const nextSegments = await window.timelineAPI.updateSegmentTitle(id, title)
+      setSegments(nextSegments)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : String(error))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     void loadTodaySegments()
   }, [loadTodaySegments])
@@ -66,7 +80,11 @@ function App(): React.JSX.Element {
 
       {errorMessage ? <p className="error-message">{errorMessage}</p> : null}
 
-      <TodaySegmentList isLoading={isLoading} segments={segments} />
+      <TodaySegmentList
+        isLoading={isLoading}
+        onUpdateTitle={updateSegmentTitle}
+        segments={segments}
+      />
     </main>
   )
 }

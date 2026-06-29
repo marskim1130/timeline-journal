@@ -3,17 +3,25 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
 import icon from '../../resources/icon.png?asset'
+import trayNormalIcon from '../../resources/tray-normal.png?asset'
+import trayMarkedIcon from '../../resources/tray-marked.png?asset'
+
 import { closeDatabase, getDatabase } from './db'
 import { notifyTimelineUpdated, registerTimelineIpc } from './ipc'
 import { registerTimelineShortcut, unregisterTimelineShortcut } from './shortcut'
 import { createTimelineService, type TimelineDatabase } from './timeline-service'
+import { setupTray } from './tray'
 
 if (process.platform === 'linux') {
   app.commandLine.appendSwitch('enable-features', 'GlobalShortcutsPortal')
 }
 
-function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+let mainWindow: BrowserWindow | null = null
+let trayInstance: { destroy: () => void; triggerFeedback: () => void } | null = null
+let isQuitting = false
+
+function createWindow(): BrowserWindow {
+  const window = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
@@ -26,11 +34,19 @@ function createWindow(): void {
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+  window.on('ready-to-show', () => {
+    window.show()
   })
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  window.on('close', (event) => {
+    // 除非用户显式从托盘菜单点击“退出”，否则拦截关闭按钮并隐藏到后台托盘。
+    if (!isQuitting) {
+      event.preventDefault()
+      window.hide()
+    }
+  })
+
+  window.webContents.setWindowOpenHandler((details) => {
     // 外部链接交给系统浏览器，避免在 Electron 窗口里打开未知页面。
     void shell.openExternal(details.url)
     return { action: 'deny' }
@@ -38,10 +54,12 @@ function createWindow(): void {
 
   // 开发模式加载 Vite dev server；生产模式加载构建后的 renderer 文件。
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    void mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    void window.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    void mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    void window.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return window
 }
 
 void app
@@ -58,16 +76,28 @@ void app
     const database = getDatabase() as unknown as TimelineDatabase
     const timelineService = createTimelineService({
       database,
-      onUpdated: notifyTimelineUpdated
+      onUpdated: () => {
+        notifyTimelineUpdated()
+        trayInstance?.triggerFeedback()
+      }
     })
 
     registerTimelineIpc(timelineService)
     registerTimelineShortcut(timelineService)
-    createWindow()
+    mainWindow = createWindow()
+
+    trayInstance = setupTray({
+      mainWindow,
+      timelineService,
+      normalIconPath: trayNormalIcon,
+      markedIconPath: trayMarkedIcon
+    })
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow()
+        mainWindow = createWindow()
+      } else {
+        mainWindow?.show()
       }
     })
   })
@@ -77,6 +107,9 @@ void app
   })
 
 app.on('before-quit', () => {
+  isQuitting = true
+  trayInstance?.destroy()
+  trayInstance = null
   closeDatabase()
 })
 

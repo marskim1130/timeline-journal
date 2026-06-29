@@ -4,9 +4,14 @@ import SegmentItem from './SegmentItem'
 interface TodaySegmentListProperties {
   segments: TimeSegment[]
   isLoading: boolean
+  onUpdateTitle?: (id: string, title: string) => Promise<void>
 }
 
-function TodaySegmentList({ segments, isLoading }: TodaySegmentListProperties): React.JSX.Element {
+function TodaySegmentList({
+  segments,
+  isLoading,
+  onUpdateTitle
+}: TodaySegmentListProperties): React.JSX.Element {
   if (segments.length === 0) {
     return (
       <section className="timeline-panel">
@@ -29,7 +34,7 @@ function TodaySegmentList({ segments, isLoading }: TodaySegmentListProperties): 
 
       <ol className="segment-list">
         {segments.map((segment) => (
-          <SegmentItem key={segment.id} segment={segment} />
+          <SegmentItem key={segment.id} onUpdateTitle={onUpdateTitle} segment={segment} />
         ))}
       </ol>
     </section>

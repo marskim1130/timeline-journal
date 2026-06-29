@@ -4,7 +4,7 @@ import type { TimeMarkerSource, TimeSegment, TimeSegmentStatus } from '../shared
 
 export interface TimelineStatement<Result = unknown> {
   run: (params?: object) => unknown
-  get: () => Result | undefined
+  get: (params?: object) => Result | undefined
   all: (params?: object) => Result[]
 }
 
@@ -35,6 +35,7 @@ interface TodayBounds {
 export interface TimelineService {
   markNow: (source: TimeMarkerSource) => TimeSegment[]
   getTodaySegments: () => TimeSegment[]
+  updateSegmentTitle: (id: string, title: string) => TimeSegment[]
 }
 
 export interface TimelineServiceOptions {
@@ -179,6 +180,54 @@ export function createTimelineService(options: TimelineServiceOptions): Timeline
       })
 
       const result = runMarkNow()
+      onUpdated?.()
+      return result
+    },
+    updateSegmentTitle: (id: string, title: string): TimeSegment[] => {
+      const currentTime = now()
+      const nowIso = currentTime.toISOString()
+
+      const findSegment = database.prepare<{ end_time: string | null }>(`
+        SELECT end_time
+        FROM time_segments
+        WHERE id = @id
+        LIMIT 1
+      `)
+
+      const updateTitleStmt = database.prepare(`
+        UPDATE time_segments
+        SET title = @title,
+            status = @status,
+            updated_at = @updatedAt
+        WHERE id = @id
+      `)
+
+      const runUpdate = database.transaction((): TimeSegment[] => {
+        const existing = findSegment.get({ id })
+        if (!existing) {
+          return getSegmentsForDay(database, currentTime)
+        }
+
+        const nextTitle = title.trim()
+        const isDefaultTitle = nextTitle === defaultSegmentTitle || nextTitle === ''
+        const finalTitle = nextTitle === '' ? defaultSegmentTitle : nextTitle
+        const nextStatus = isDefaultTitle
+          ? existing.end_time === null
+            ? 'active'
+            : 'pending'
+          : 'edited'
+
+        updateTitleStmt.run({
+          id,
+          title: finalTitle,
+          status: nextStatus,
+          updatedAt: nowIso
+        })
+
+        return getSegmentsForDay(database, currentTime)
+      })
+
+      const result = runUpdate()
       onUpdated?.()
       return result
     }

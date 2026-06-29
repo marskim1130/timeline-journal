@@ -5,12 +5,15 @@ import type { TimelineApi } from '../shared/timeline'
 const timelineIpcChannels = {
   markNow: 'timeline:mark-now',
   getTodaySegments: 'timeline:get-today-segments',
+  updateSegmentTitle: 'timeline:update-segment-title',
   updated: 'timeline:updated'
 } as const
 
 export const timelineAPI: TimelineApi = {
   markNow: () => ipcRenderer.invoke(timelineIpcChannels.markNow),
   getTodaySegments: () => ipcRenderer.invoke(timelineIpcChannels.getTodaySegments),
+  updateSegmentTitle: (id, title) =>
+    ipcRenderer.invoke(timelineIpcChannels.updateSegmentTitle, id, title),
   onTimelineUpdated: (callback) => {
     const listener = (): void => {
       callback()

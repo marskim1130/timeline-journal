@@ -86,6 +86,23 @@ class FakeTimelineDatabase implements TimelineDatabase {
       }
     }
 
+    if (source.includes('UPDATE time_segments') && source.includes('SET title =')) {
+      return {
+        run: (params?: object): void => {
+          const update = params as { id: string; title: string; status: string; updatedAt: string }
+          const segment = this.segments.find((candidate) => candidate.id === update.id)
+
+          if (segment) {
+            segment.title = update.title
+            segment.status = update.status
+            segment.updated_at = update.updatedAt
+          }
+        },
+        get: (): Result | undefined => undefined,
+        all: (): Result[] => []
+      }
+    }
+
     if (source.includes('UPDATE time_segments')) {
       return {
         run: (params?: object): void => {
@@ -118,6 +135,18 @@ class FakeTimelineDatabase implements TimelineDatabase {
           })
         },
         get: (): Result | undefined => undefined,
+        all: (): Result[] => []
+      }
+    }
+
+    if (source.includes('SELECT end_time') && source.includes('WHERE id = @id')) {
+      return {
+        run: (): void => {},
+        get: (params?: object): Result | undefined => {
+          const { id } = params as { id: string }
+          const segment = this.segments.find((candidate) => candidate.id === id)
+          return segment ? ({ end_time: segment.end_time } as Result) : undefined
+        },
         all: (): Result[] => []
       }
     }
@@ -217,5 +246,28 @@ describe('createTimelineService', () => {
 
     testService.markNow('renderer')
     expect(callCount).toBe(2)
+  })
+
+  it('updates segment title and sets status to edited if not 待整理', () => {
+    let callCount = 0
+    const testService = createTimelineService({
+      database,
+      now: nextClockTime,
+      onUpdated: () => {
+        callCount += 1
+      }
+    })
+
+    const initialSegments = testService.markNow('renderer')
+    const targetId = initialSegments[0].id
+
+    const updatedSegments = testService.updateSegmentTitle(targetId, '深入架构测试')
+
+    expect(updatedSegments[0]).toMatchObject({
+      id: targetId,
+      title: '深入架构测试',
+      status: 'edited'
+    })
+    expect(callCount).toBe(2) // 1 from markNow, 1 from updateSegmentTitle
   })
 })

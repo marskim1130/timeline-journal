@@ -1,7 +1,9 @@
+import { useEffect, useRef, useState } from 'react'
 import type { TimeSegment } from '../../../shared/timeline'
 
 interface SegmentItemProperties {
   segment: TimeSegment
+  onUpdateTitle?: (id: string, title: string) => Promise<void>
 }
 
 const timeFormatter = new Intl.DateTimeFormat('zh-CN', {
@@ -47,8 +49,38 @@ function getStatusLabel(status: TimeSegment['status']): string {
   return '待整理'
 }
 
-function SegmentItem({ segment }: SegmentItemProperties): React.JSX.Element {
+function SegmentItem({ segment, onUpdateTitle }: SegmentItemProperties): React.JSX.Element {
+  const [isEditing, setIsEditing] = useState(false)
+  const [titleInput, setTitleInput] = useState(segment.title)
+  const inputRef = useRef<HTMLInputElement>(null)
   const endLabel = segment.endTime ? formatTime(segment.endTime) : '现在'
+
+  useEffect(() => {
+    setTitleInput(segment.title)
+  }, [segment.title])
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
+  }, [isEditing])
+
+  const handleSave = async (): Promise<void> => {
+    setIsEditing(false)
+    if (onUpdateTitle && titleInput.trim() !== segment.title) {
+      await onUpdateTitle(segment.id, titleInput.trim())
+    }
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (event.key === 'Enter') {
+      void handleSave()
+    } else if (event.key === 'Escape') {
+      setTitleInput(segment.title)
+      setIsEditing(false)
+    }
+  }
 
   return (
     <li className="segment-row">
@@ -59,7 +91,23 @@ function SegmentItem({ segment }: SegmentItemProperties): React.JSX.Element {
       </div>
       <div className="duration-label">{formatDuration(segment.startTime, segment.endTime)}</div>
       <div className={`status-pill status-${segment.status}`}>{getStatusLabel(segment.status)}</div>
-      <div className="segment-title">{segment.title}</div>
+      <div className="segment-title-container">
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            className="title-edit-input"
+            onBlur={() => void handleSave()}
+            onChange={(e) => setTitleInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            type="text"
+            value={titleInput}
+          />
+        ) : (
+          <span className="segment-title" onClick={() => setIsEditing(true)} title="点击修改标题">
+            {segment.title}
+          </span>
+        )}
+      </div>
     </li>
   )
 }
